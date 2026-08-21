@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: transferplayer-postgres
+    environment:
+      POSTGRES_DB: transferplayer
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:8
+    container_name: transferplayer-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@transferplayer.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    container_name: transferplayer-app
+    command: >
+      sh -c "alembic upgrade head && python -m transferplayer.db.init_db && streamlit run transferplayer/ui/main.py --server.port=8501 --server.address=0.0.0.0"
+    ports:
+      - "8501:8501"
+    environment:
+      - NEON_DATABASE_URL=postgresql://postgres:postgres@postgres:5432/transferplayer
+      - DB_NAME=transferplayer
+      - APP_ENV=development
+      - FOOTBALL_API_KEY=${FOOTBALL_API_KEY:-}
+      - FOOTBALL_API_HOST=v3.football.api-sports.io
+    volumes:
+      - ./transferplayer:/app/transferplayer
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini
+    depends_on:
+      postgres:
+        condition: service_healthy
+    develop:
+      watch:
+        - action: sync
+          path: ./transferplayer
+          target: /app/transferplayer
+
+volumes:
+  postgres_data:
+  pgadmin_data:
