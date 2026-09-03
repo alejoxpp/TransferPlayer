@@ -2,6 +2,7 @@
 import asyncio
 from decimal import Decimal
 
+from transferplayer.db.repository import get_transfer_repo
 from transferplayer.db.session import close_db, init_db
 from transferplayer.models.domain import TransferCreate
 
