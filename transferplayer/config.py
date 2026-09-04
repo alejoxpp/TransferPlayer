@@ -1,17 +1,22 @@
 """Configuración centralizada con pydantic-settings."""
 
 from functools import lru_cache
+from pathlib import Path
 from urllib.parse import urlparse
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Raíz del proyecto (transferplayer/..) para que .env se encuentre
+# sin importar el directorio de trabajo actual (CWD).
+_BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 class Settings(BaseSettings):
     """Settings cargados desde .env y variables de entorno."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_BASE_DIR / ".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
