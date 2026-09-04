@@ -1,0 +1,14 @@
+# Configuración de Streamlit (local y nube).
+# El puerto lo resuelve el comando de arranque ($PORT en Render/Railway, 8501 en local).
+[server]
+headless = true
+address = "0.0.0.0"
+enableCORS = false
+enableXsrfProtection = true
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+base = "light"
+primaryColor = "#2E86AB"

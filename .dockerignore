@@ -1,0 +1,29 @@
+# Git
+.git
+.gitignore
+
+# Entornos y cachés de Python
+.venv
+venv
+__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+# Secretos y datos locales
+.env
+*.db
+.streamlit/secrets.toml
+
+# Artefactos de CI/coverage
+.coverage
+coverage.xml
+htmlcov
+bandit-report.json
+
+# IDEs
+.idea
+.vscode

@@ -31,8 +31,8 @@ build/
 .DS_Store
 Thumbs.db
 
-# Streamlit
-.streamlit/
+# Streamlit (solo secretos; config.toml sí se versiona)
+.streamlit/secrets.toml
 
 # Environment
 .env

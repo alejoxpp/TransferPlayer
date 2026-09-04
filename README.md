@@ -81,6 +81,19 @@ python -m transferplayer.db.init_db
 streamlit run transferplayer/ui/main.py
 ```
 
+<details>
+<summary>🪟 Variante PowerShell (Windows)</summary>
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements-dev.txt
+Copy-Item .env.example .env  # Configura NEON_DATABASE_URL
+alembic upgrade head
+streamlit run transferplayer/ui/main.py
+```
+</details>
+
 ---
 
 ## 🔧 Configuración
@@ -125,6 +138,25 @@ pytest tests/unit -q
 # Solo integración (requiere BD)
 pytest tests/integration -q
 ```
+
+---
+
+## ☁️ Deploy en Render (producción)
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/alejoxpp/TransferPlayer)
+
+El repo incluye un **Blueprint** (`render.yaml`) que aprovisiona el web service Docker automáticamente:
+
+1. Pulsa el botón de arriba (o desde [dashboard.render.com](https://dashboard.render.com) → **New → Blueprint** → selecciona este repo)
+2. Render lee `render.yaml` y te pide los secretos:
+   - `NEON_DATABASE_URL` → cadena de conexión **pooled** de Neon (obligatoria)
+   - `FOOTBALL_API_KEY` → clave de RapidAPI (opcional; solo la página Sync la usa)
+3. **Apply** → build Docker + `alembic upgrade head` automático en cada arranque
+4. URL pública tipo `https://transferplayer-xxxx.onrender.com` (health check: `/_stcore/health`)
+
+> 💡 El contenedor escucha en `$PORT` (Render/Railway lo inyectan; en local cae a 8501), por lo que **el mismo Dockerfile funciona en Render y Railway** sin cambios.
+>
+> ⚠️ **Plan free de Render:** la app se duerme tras ~15 min sin tráfico (cold start ~1 min). Para 24/7 sin sleeps usa el plan Starter.
 
 ---
 
@@ -173,14 +205,15 @@ TransferPlayer/
 | Workflow | Trigger | Qué Hace |
 |----------|---------|----------|
 | **CI** | Push/PR | Ruff + Black + MyPy + Tests + Coverage + Docker Build |
-| **Deploy** | Push main / Tag | Deploy Streamlit Cloud + Push Docker GHCR + GitHub Release |
 | **Sync Data** | Cron 03:00 UTC / Manual | Sync API-Football → Neon + Notificaciones Slack |
+
+**Deploy:** vía **Render Blueprint** (`render.yaml`) — auto-deploy en cada push a `main`.
 
 ---
 
 ## 📊 Demo
 
-> **Streamlit Cloud:** https://transferplayer.streamlit.app *(si está desplegado)*
+> **Render:** `https://transferplayer.onrender.com` *(URL exacta tras el primer deploy)*
 
 ---
 

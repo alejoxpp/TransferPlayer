@@ -1,0 +1,19 @@
+# Blueprint de Render — despliegue del repo con un clic.
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: transferplayer
+    runtime: docker
+    plan: free
+    region: frankfurt # más cercano a Neon eu-central-1
+    healthCheckPath: /_stcore/health
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: FOOTBALL_API_HOST
+        value: v3.football.api-sports.io
+      - key: NEON_DATABASE_URL
+        sync: false # se solicita como secreto al desplegar
+      - key: FOOTBALL_API_KEY
+        sync: false # opcional: solo necesario para Sync Center
