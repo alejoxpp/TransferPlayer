@@ -1,7 +1,9 @@
 """Configuración centralizada con pydantic-settings."""
-from functools import lru_cache
 
-from pydantic import PostgresDsn, field_validator
+from functools import lru_cache
+from urllib.parse import urlparse
+
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,7 +18,7 @@ class Settings(BaseSettings):
     )
 
     # Database
-    neon_database_url: PostgresDsn
+    neon_database_url: str = ""
     db_name: str = "transferplayer"
 
     # Neon API
@@ -38,14 +40,28 @@ class Settings(BaseSettings):
     @field_validator("neon_database_url", mode="before")
     @classmethod
     def validate_db_url(cls, v: str) -> str:
-        if not v or v == "postgresql://user:pass@ep-xxx.pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require":
+        if (
+            not v
+            or v
+            == "postgresql://user:pass@ep-xxx.pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require"
+        ):
             raise ValueError("NEON_DATABASE_URL debe configurarse en .env")
         return v
 
     @property
+    def db_host(self) -> str | None:
+        """Host de la conexión PostgreSQL."""
+        return urlparse(self.neon_database_url).hostname
+
+    @property
+    def db_path(self) -> str | None:
+        """Base de datos de la conexión PostgreSQL."""
+        return urlparse(self.neon_database_url).path.lstrip("/") or None
+
+    @property
     def async_database_url(self) -> str:
         """URL convertida a asyncpg para SQLAlchemy async."""
-        url = str(self.neon_database_url)
+        url = self.neon_database_url
         if url.startswith("postgresql://"):
             return url.replace("postgresql://", "postgresql+asyncpg://", 1)
         return url

@@ -1,4 +1,6 @@
 """SQLAlchemy async session management."""
+
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from sqlalchemy.ext.asyncio import (
@@ -42,7 +44,7 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
 
 
 @asynccontextmanager
-async def get_session() -> AsyncSession:
+async def get_session() -> AsyncIterator[AsyncSession]:
     """Context manager para sesión de BD (uso en services)."""
     factory = get_session_factory()
     async with factory() as session:
@@ -59,6 +61,7 @@ async def get_session() -> AsyncSession:
 async def init_db() -> None:
     """Inicializa tablas (solo para desarrollo/scripts)."""
     from transferplayer.models.orm import Base
+
     engine = get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

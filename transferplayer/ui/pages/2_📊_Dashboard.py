@@ -1,10 +1,12 @@
 """Página: Dashboard Estadístico."""
+
 import asyncio
 
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 
+from transferplayer.models.domain import TransferFilter, TransferRead
 from transferplayer.services.transfer_service import transfer_service
 
 st.set_page_config(page_title="Dashboard", page_icon="📊", layout="wide")
@@ -20,10 +22,9 @@ def load_stats_cached() -> dict:
 
 
 @st.cache_data(ttl=300)
-def load_all_transfers_cached() -> list:
-    from transferplayer.models.domain import TransferFilter
+def load_all_transfers_cached() -> list[TransferRead]:
     filters = TransferFilter(limit=1000)
-    return asyncio.run(transfer_service.list_transfers(filters))
+    return list(asyncio.run(transfer_service.list_transfers(filters)))
 
 
 # Cargar datos
@@ -55,9 +56,13 @@ with col_a:
     df_liga = pd.DataFrame(stats["by_liga"])
     if not df_liga.empty:
         fig_liga = px.bar(
-            df_liga, x="liga", y="total_valor", color="liga",
-            text_auto=".1fM", labels={"liga": "Liga", "total_valor": "Inversión (€M)"},
-            title="Gasto Acumulado por Liga"
+            df_liga,
+            x="liga",
+            y="total_valor",
+            color="liga",
+            text_auto=".1fM",
+            labels={"liga": "Liga", "total_valor": "Inversión (€M)"},
+            title="Gasto Acumulado por Liga",
         )
         fig_liga.update_layout(showlegend=False, height=400)
         st.plotly_chart(fig_liga, width="stretch")
@@ -67,8 +72,11 @@ with col_b:
     df_pos = pd.DataFrame(stats["by_posicion"])
     if not df_pos.empty:
         fig_pos = px.pie(
-            df_pos, names="posicion", values="count", hole=0.4,
-            title="Proporción de Fichajes por Posición"
+            df_pos,
+            names="posicion",
+            values="count",
+            hole=0.4,
+            title="Proporción de Fichajes por Posición",
         )
         fig_pos.update_traces(textposition="inside", textinfo="percent+label")
         fig_pos.update_layout(height=400)
@@ -81,34 +89,60 @@ with col_c:
     df_clubs = pd.DataFrame(stats["top_clubs"])
     if not df_clubs.empty:
         fig_clubs = px.bar(
-            df_clubs.head(10), x="club", y="total_valor", color="club",
+            df_clubs.head(10),
+            x="club",
+            y="total_valor",
+            color="club",
             labels={"club": "Club", "total_valor": "Inversión (€M)"},
-            title="Clubes que Más Invierten"
+            title="Clubes que Más Invierten",
         )
         fig_clubs.update_layout(showlegend=False, height=400, xaxis_tickangle=-45)
         st.plotly_chart(fig_clubs, width="stretch")
 
 with col_d:
     st.subheader("📈 Relación Edad vs Valor de Mercado")
-    df_scatter = pd.DataFrame([{
-        "jugador": t.jugador, "edad": t.edad, "valor": float(t.valor),
-        "liga": t.liga, "club_destino": t.club_destino, "posicion": t.posicion
-    } for t in transfers])
+    df_scatter = pd.DataFrame(
+        [
+            {
+                "jugador": t.jugador,
+                "edad": t.edad,
+                "valor": float(t.valor),
+                "liga": t.liga,
+                "club_destino": t.club_destino,
+                "posicion": t.posicion,
+            }
+            for t in transfers
+        ]
+    )
     if not df_scatter.empty:
         fig_scatter = px.scatter(
-            df_scatter, x="edad", y="valor", color="liga",
+            df_scatter,
+            x="edad",
+            y="valor",
+            color="liga",
             hover_data=["jugador", "club_destino", "posicion"],
             labels={"edad": "Edad", "valor": "Valor (€M)"},
-            title="Edad vs Valor de Mercado por Liga"
+            title="Edad vs Valor de Mercado por Liga",
         )
         fig_scatter.update_layout(height=400)
         st.plotly_chart(fig_scatter, width="stretch")
 
 # Tabla detallada expandible
 with st.expander("📋 Ver datos completos", expanded=False):
-    df_full = pd.DataFrame([{
-        "Jugador": t.jugador, "Edad": t.edad, "Posición": t.posicion,
-        "Liga": t.liga, "Origen": t.club_origen, "Destino": t.club_destino,
-        "Valor (€M)": t.valor, "Tipo": t.tipo, "Fecha": t.fecha.strftime("%Y-%m-%d")
-    } for t in transfers])
+    df_full = pd.DataFrame(
+        [
+            {
+                "Jugador": t.jugador,
+                "Edad": t.edad,
+                "Posición": t.posicion,
+                "Liga": t.liga,
+                "Origen": t.club_origen,
+                "Destino": t.club_destino,
+                "Valor (€M)": t.valor,
+                "Tipo": t.tipo,
+                "Fecha": t.fecha.strftime("%Y-%m-%d"),
+            }
+            for t in transfers
+        ]
+    )
     st.dataframe(df_full, width="stretch", hide_index=True)

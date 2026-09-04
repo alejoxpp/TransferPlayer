@@ -1,5 +1,6 @@
 """Repository pattern para acceso a datos tipado."""
-from collections.abc import Sequence
+
+from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 from typing import Generic, TypeVar
 
@@ -17,7 +18,7 @@ T = TypeVar("T", bound=Base)
 class BaseRepository(Generic[T]):
     """Repository base genérico."""
 
-    def __init__(self, model: type[T], session: AsyncSession | None = None):
+    def __init__(self, model: type[T], session: AsyncSession | None = None) -> None:
         self.model = model
         self._session = session
 
@@ -40,14 +41,14 @@ class BaseRepository(Generic[T]):
         result = await self.session.execute(stmt)
         return result.scalar_one()
 
-    async def create(self, **kwargs) -> T:
+    async def create(self, **kwargs: object) -> T:
         obj = self.model(**kwargs)
         self.session.add(obj)
         await self.session.flush()
         await self.session.refresh(obj)
         return obj
 
-    async def update(self, id: int, **kwargs) -> T | None:
+    async def update(self, id: int, **kwargs: object) -> T | None:
         obj = await self.get_by_id(id)
         if obj is None:
             return None
@@ -70,7 +71,7 @@ class BaseRepository(Generic[T]):
 class TransferRepository(BaseRepository[Transfer]):
     """Repository especializado para traspasos."""
 
-    def __init__(self, session: AsyncSession | None = None):
+    def __init__(self, session: AsyncSession | None = None) -> None:
         super().__init__(Transfer, session)
 
     def _build_filter_stmt(self, filters: TransferFilter) -> Select:
@@ -158,9 +159,15 @@ class TransferRepository(BaseRepository[Transfer]):
         """Estadísticas agregadas para dashboard."""
         async with get_session() as session:
             total = await session.execute(select(func.count()).select_from(Transfer))
-            total_valor = await session.execute(select(func.coalesce(func.sum(Transfer.valor), 0)).select_from(Transfer))
-            avg_valor = await session.execute(select(func.coalesce(func.avg(Transfer.valor), 0)).select_from(Transfer))
-            max_valor = await session.execute(select(func.coalesce(func.max(Transfer.valor), 0)).select_from(Transfer))
+            total_valor = await session.execute(
+                select(func.coalesce(func.sum(Transfer.valor), 0)).select_from(Transfer)
+            )
+            avg_valor = await session.execute(
+                select(func.coalesce(func.avg(Transfer.valor), 0)).select_from(Transfer)
+            )
+            max_valor = await session.execute(
+                select(func.coalesce(func.max(Transfer.valor), 0)).select_from(Transfer)
+            )
 
             # Por liga
             liga_stats = await session.execute(
@@ -191,12 +198,8 @@ class TransferRepository(BaseRepository[Transfer]):
                     {"liga": r[0], "total_valor": float(r[1]), "count": r[2]}
                     for r in liga_stats.all()
                 ],
-                "by_posicion": [
-                    {"posicion": r[0], "count": r[1]} for r in pos_stats.all()
-                ],
-                "top_clubs": [
-                    {"club": r[0], "total_valor": float(r[1])} for r in club_stats.all()
-                ],
+                "by_posicion": [{"posicion": r[0], "count": r[1]} for r in pos_stats.all()],
+                "top_clubs": [{"club": r[0], "total_valor": float(r[1])} for r in club_stats.all()],
             }
 
     async def upsert_from_api(self, data: TransferCreate) -> tuple[Transfer, bool]:
@@ -230,7 +233,7 @@ class TransferRepository(BaseRepository[Transfer]):
 class SyncLogRepository(BaseRepository[SyncLog]):
     """Repository para logs de sync."""
 
-    def __init__(self, session: AsyncSession | None = None):
+    def __init__(self, session: AsyncSession | None = None) -> None:
         super().__init__(SyncLog, session)
 
     async def create_log(
@@ -262,13 +265,13 @@ class SyncLogRepository(BaseRepository[SyncLog]):
 
 
 @asynccontextmanager
-async def get_transfer_repo() -> TransferRepository:
+async def get_transfer_repo() -> AsyncIterator[TransferRepository]:
     """Context manager para TransferRepository con sesión automática."""
     async with get_session() as session:
         yield TransferRepository(session)
 
 
 @asynccontextmanager
-async def get_sync_log_repo() -> SyncLogRepository:
+async def get_sync_log_repo() -> AsyncIterator[SyncLogRepository]:
     async with get_session() as session:
         yield SyncLogRepository(session)

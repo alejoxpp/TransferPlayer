@@ -1,53 +1,106 @@
 """Servicio de sincronización con APIs externas."""
+
 import asyncio
 import time
+from collections.abc import Sequence
 from datetime import datetime
 from decimal import Decimal
+from typing import TypedDict
 
 from transferplayer.api.football_data import FootballAPIError, football_client
 from transferplayer.db.repository import get_sync_log_repo, get_transfer_repo
 from transferplayer.models.domain import TransferCreate
+from transferplayer.models.orm import SyncLog
+
+
+class SyncStats(TypedDict):
+    """Estadísticas de una sincronización con API externa."""
+
+    source: str
+    endpoint: str
+    season: int
+    status: str
+    dry_run: bool
+    leagues_processed: int
+    teams_processed: int
+    records_fetched: int
+    records_inserted: int
+    records_updated: int
+    duration_ms: int
+    errors: list[str]
 
 
 class SyncService:
     """Orquesta la sincronización de datos externos."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.client = football_client
 
-    async def sync_all_leagues(self, season: int | None = None) -> dict:
+    async def sync_all_leagues(self, season: int | None = None, dry_run: bool = False) -> SyncStats:
         """
-        Sincroniza traspasos de las 5 grandes ligas.
+        Sincroniza traspasos de las 5 grandes ligas en un único pase.
+
+        Obtiene equipos y traspasos de la API una sola vez y realiza el
+        upsert en BD. Si ``dry_run`` es True sólo cuenta lo que se habría
+        procesado, sin tocar la BD ni registrar logs.
+
         Returns: dict con estadísticas del sync.
         """
         start_time = time.perf_counter()
         season = season or datetime.now().year
 
-        stats = {
+        stats: SyncStats = {
             "source": "api-football",
             "endpoint": "/transfers (top 5 leagues)",
             "season": season,
             "status": "success",
+            "dry_run": dry_run,
+            "leagues_processed": 0,
+            "teams_processed": 0,
             "records_fetched": 0,
             "records_inserted": 0,
             "records_updated": 0,
+            "duration_ms": 0,
             "errors": [],
         }
 
         try:
-            # 1. Fetch desde API
-            api_stats = await self.client.sync_top5_leagues_transfers(season)
-            stats["records_fetched"] = api_stats["transfers_fetched"]
-            stats["errors"].extend(api_stats["errors"])
+            # Un único pase: teams + transfers + upsert por liga/equipo
+            for league_id, league_name in self.client.TOP_5_LEAGUES.items():
+                try:
+                    teams = await self.client.get_teams(league_id, season)
+                    stats["leagues_processed"] += 1
 
-            # 2. Procesar y upsert en BD
-            # Nota: el client actual no retorna los transfers parseados, solo stats
-            # Necesitamos modificar para retornar los datos reales
-            # Por ahora, usamos un enfoque simplificado
+                    for team in teams:
+                        try:
+                            raw_transfers = await self.client.get_transfers(team.id, season)
+                            stats["teams_processed"] += 1
 
-            inserted, updated = await self._process_transfers_from_api(season)
-            stats["records_inserted"] = inserted
-            stats["records_updated"] = updated
+                            for raw in raw_transfers:
+                                stats["records_fetched"] += 1
+                                transfer_data = self._parse_transfer(raw, league_name, team.name)
+                                if transfer_data is None:
+                                    continue
+
+                                if dry_run:
+                                    continue
+
+                                async with get_transfer_repo() as repo:
+                                    _, created = await repo.upsert_from_api(transfer_data)
+                                    if created:
+                                        stats["records_inserted"] += 1
+                                    else:
+                                        stats["records_updated"] += 1
+
+                            await asyncio.sleep(0.05)  # Rate limit courteous
+
+                        except FootballAPIError as e:
+                            stats["errors"].append(f"Team {team.name}: {e}")
+                            continue
+
+                except FootballAPIError as e:
+                    stats["errors"].append(f"League {league_name}: {e}")
+                    continue
 
             if stats["errors"]:
                 stats["status"] = "partial"
@@ -60,45 +113,10 @@ class SyncService:
             stats["errors"].append(f"Unexpected: {e}")
         finally:
             stats["duration_ms"] = int((time.perf_counter() - start_time) * 1000)
-            await self._log_sync(stats)
+            if not dry_run:
+                await self._log_sync(stats)
 
         return stats
-
-    async def _process_transfers_from_api(self, season: int) -> tuple[int, int]:
-        """
-        Procesa traspasos reales de la API y hace upsert.
-        Returns: (inserted, updated)
-        """
-        inserted = 0
-        updated = 0
-
-        for league_id, league_name in self.client.TOP_5_LEAGUES.items():
-            try:
-                teams = await self.client.get_teams(league_id, season)
-
-                for team in teams:
-                    try:
-                        raw_transfers = await self.client.get_transfers(team.id, season)
-
-                        for raw in raw_transfers:
-                            transfer_data = self._parse_transfer(raw, league_name, team.name)
-                            if transfer_data:
-                                async with get_transfer_repo() as repo:
-                                    _, created = await repo.upsert_from_api(transfer_data)
-                                    if created:
-                                        inserted += 1
-                                    else:
-                                        updated += 1
-
-                        await asyncio.sleep(0.05)  # Rate limit courteous
-
-                    except FootballAPIError:
-                        continue
-
-            except FootballAPIError:
-                continue
-
-        return inserted, updated
 
     def _parse_transfer(self, raw: dict, league: str, team_name: str) -> TransferCreate | None:
         """
@@ -172,7 +190,7 @@ class SyncService:
         except Exception:
             return Decimal("0")
 
-    async def _log_sync(self, stats: dict) -> None:
+    async def _log_sync(self, stats: SyncStats) -> None:
         """Guarda log de sincronización en BD."""
         async with get_sync_log_repo() as repo:
             await repo.create_log(
@@ -186,7 +204,7 @@ class SyncService:
                 duration_ms=stats["duration_ms"],
             )
 
-    async def get_sync_history(self, limit: int = 20) -> list:
+    async def get_sync_history(self, limit: int = 20) -> Sequence[SyncLog]:
         async with get_sync_log_repo() as repo:
             return await repo.get_recent(limit)
 

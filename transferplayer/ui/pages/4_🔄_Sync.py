@@ -1,10 +1,13 @@
 """Página: Centro de Sincronización."""
+
 import asyncio
 import time
 from datetime import datetime
 
 import streamlit as st
 
+from transferplayer.config import settings
+from transferplayer.models.orm import SyncLog
 from transferplayer.services.sync_service import sync_service
 from transferplayer.ui.components import render_sync_logs
 
@@ -17,7 +20,6 @@ st.markdown("---")
 # Status de configuración
 col1, col2, col3 = st.columns(3)
 with col1:
-    from transferplayer.config import settings
     st.metric("API Configurada", "✅" if settings.football_api_key else "❌")
 with col2:
     st.metric("Rate Limit", "100 req/día (Free)")
@@ -34,14 +36,16 @@ with col_b:
     dry_run = st.checkbox("Dry Run (solo prueba, no guarda)", value=False)
 
 # Botón de sincronización manual
-if st.button("🚀 Iniciar Sincronización Manual", type="primary", use_container_width=True):
+if st.button("🚀 Iniciar Sincronización Manual", type="primary", width="stretch"):
     if not settings.football_api_key:
         st.error("❌ FOOTBALL_API_KEY no configurada en Secrets/.env")
     else:
-        with st.spinner("Sincronizando... Esto puede tardar varios minutos (rate limit 100 req/día)"):
+        with st.spinner(
+            "Sincronizando... Esto puede tardar varios minutos (rate limit 100 req/día)"
+        ):
             start = time.time()
             try:
-                stats = asyncio.run(sync_service.sync_all_leagues(season=season))
+                stats = asyncio.run(sync_service.sync_all_leagues(season=season, dry_run=dry_run))
                 elapsed = time.time() - start
 
                 st.success(f"✅ Sync completado en {elapsed:.1f}s")
@@ -56,6 +60,10 @@ if st.button("🚀 Iniciar Sincronización Manual", type="primary", use_containe
                 with col4:
                     st.metric("Actualizados", stats["records_updated"])
 
+                if stats["dry_run"]:
+                    st.info(
+                        "ℹ️ Ejecutado en modo **Dry Run**: no se guardó nada en la BD ni se registró log."
+                    )
                 if stats["errors"]:
                     st.warning(f"⚠️ {len(stats['errors'])} errores/warnings:")
                     for err in stats["errors"][:10]:
@@ -69,9 +77,11 @@ st.markdown("---")
 # Historial de sincronizaciones
 st.subheader("📜 Historial de Sincronizaciones")
 
+
 @st.cache_data(ttl=60)
-def load_sync_history():
-    return asyncio.run(sync_service.get_sync_history(20))
+def load_sync_history() -> list[SyncLog]:
+    return list(asyncio.run(sync_service.get_sync_history(20)))
+
 
 logs = load_sync_history()
 render_sync_logs(logs)

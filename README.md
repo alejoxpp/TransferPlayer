@@ -1,14 +1,12 @@
 # ⚽ TransferPlayer
 
-> **Prototipo profesional de traspasos de fútbol** - Las 5 Grandes Ligas Europeas  
+> **Prototipo de gestion de traspasos de fútbol** - Las 5 Grandes Ligas Europeas  
 > Construido con **Streamlit**, **PostgreSQL (Neon)**, **SQLAlchemy 2.0**, **Alembic**, **API-Football**
 
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](https://python.org)
 [![License](https://img.shields.io/github/license/alejoxpp/TransferPlayer)](LICENSE)
 [![CI](https://github.com/alejoxpp/TransferPlayer/actions/workflows/ci.yml/badge.svg)](https://github.com/alejoxpp/TransferPlayer/actions/workflows/ci.yml)
-[![Deploy](https://github.com/alejoxpp/TransferPlayer/actions/workflows/deploy.yml/badge.svg)](https://github.com/alejoxpp/TransferPlayer/actions/workflows/deploy.yml)
 [![Coverage](https://codecov.io/gh/alejoxpp/TransferPlayer/branch/main/graph/badge.svg)](https://codecov.io/gh/alejoxpp/TransferPlayer)
-[![CodeQL](https://github.com/alejoxpp/TransferPlayer/actions/workflows/codeql.yml/badge.svg)](https://github.com/alejoxpp/TransferPlayer/actions/workflows/codeql.yml)
 
 ---
 
@@ -149,7 +147,7 @@ docker run -p 8501:8501 \
 
 ```
 TransferPlayer/
-├── .github/workflows/     # CI/CD (ci, deploy, sync-data)
+├── .github/workflows/     # CI/CD (ci, sync-data)
 ├── .devcontainer/         # GitHub Codespaces config
 ├── alembic/               # Migraciones BD
 ├── scripts/               # CLI scripts (migración, sync)
@@ -183,12 +181,6 @@ TransferPlayer/
 ## 📊 Demo
 
 > **Streamlit Cloud:** https://transferplayer.streamlit.app *(si está desplegado)*
-
-### Screenshots
-
-| Explorador | Dashboard | Sync Center |
-|------------|-----------|-------------|
-| ![explorer](docs/screenshots/explorer.png) | ![dashboard](docs/screenshots/dashboard.png) | ![sync](docs/screenshots/sync.png) |
 
 ---
 

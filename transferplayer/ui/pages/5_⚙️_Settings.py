@@ -1,5 +1,7 @@
 """Página: Configuración y Ajustes."""
+
 import asyncio
+import subprocess
 
 import streamlit as st
 
@@ -18,13 +20,15 @@ st.subheader("🔌 Estado de Conexión")
 col1, col2 = st.columns(2)
 with col1:
     st.markdown("**Base de Datos (Neon PostgreSQL)**")
-    st.code(f"Host: {settings.neon_database_url.host}")
-    st.code(f"DB: {settings.neon_database_url.path[1:] if settings.neon_database_url.path else 'N/A'}")
+    st.code(f"Host: {settings.db_host or 'N/A'}")
+    st.code(f"DB: {settings.db_path or settings.db_name}")
     st.code(f"SSL: {'Requerido' if 'sslmode=require' in str(settings.neon_database_url) else 'No'}")
 
 with col2:
     st.markdown("**API Externa**")
-    st.code(f"API-Football: {'✅ Configurada' if settings.football_api_key else '❌ No configurada'}")
+    st.code(
+        f"API-Football: {'✅ Configurada' if settings.football_api_key else '❌ No configurada'}"
+    )
     st.code(f"Host: {settings.football_api_host}")
     st.code(f"Neon API: {'✅ Configurada' if settings.neon_api_key else '❌ No configurada'}")
 
@@ -45,7 +49,7 @@ st.subheader("🗄️ Gestión de Base de Datos")
 
 col1, col2, col3 = st.columns(3)
 with col1:
-    if st.button("🌱 Seed Inicial (15 traspasos)", use_container_width=True):
+    if st.button("🌱 Seed Inicial (15 traspasos)", width="stretch"):
         with st.spinner("Insertando datos iniciales..."):
             try:
                 asyncio.run(seed_database())
@@ -55,7 +59,7 @@ with col1:
                 st.error(f"❌ Error: {e}")
 
 with col2:
-    if st.button("🔄 Reset Completo (⚠️ Borra todo)", use_container_width=True, type="secondary"):
+    if st.button("🔄 Reset Completo (⚠️ Borra todo)", width="stretch", type="secondary"):
         if st.checkbox("Confirmo que quiero borrar TODOS los datos", key="confirm_reset"):
             with st.spinner("Reseteando base de datos..."):
                 try:
@@ -66,10 +70,11 @@ with col2:
                     st.error(f"❌ Error: {e}")
 
 with col3:
-    if st.button("📊 Ejecutar Migraciones (Alembic)", use_container_width=True):
+    if st.button("📊 Ejecutar Migraciones (Alembic)", width="stretch"):
         with st.spinner("Ejecutando migraciones..."):
-            import subprocess
-            result = subprocess.run(["alembic", "upgrade", "head"], capture_output=True, text=True)
+            result = subprocess.run(
+                ["alembic", "upgrade", "head"], capture_output=True, text=True, check=False
+            )
             if result.returncode == 0:
                 st.success("✅ Migraciones aplicadas")
                 st.code(result.stdout)
@@ -84,7 +89,7 @@ st.subheader("🔐 Variables de Entorno (Solo lectura)")
 env_vars = {
     "APP_ENV": settings.app_env,
     "DB_NAME": settings.db_name,
-    "NEON_DATABASE_URL": f"{settings.neon_database_url.host}/*****" if settings.neon_database_url else "No configurada",
+    "NEON_DATABASE_URL": f"{settings.db_host}/*****" if settings.db_host else "No configurada",
     "FOOTBALL_API_KEY": "***" if settings.football_api_key else "No configurada",
     "FOOTBALL_API_HOST": settings.football_api_host,
     "NEON_API_KEY": "***" if settings.neon_api_key else "No configurada",
@@ -110,7 +115,10 @@ st.markdown("""
 # Logs recientes
 with st.expander("📋 Logs Recientes de Sync", expanded=False):
     from transferplayer.services.sync_service import sync_service
+
     logs = asyncio.run(sync_service.get_sync_history(10))
     for log in logs:
         status_icon = {"success": "✅", "error": "❌", "partial": "⚠️"}.get(log.status, "ℹ️")
-        st.text(f"{status_icon} {log.created_at.strftime('%Y-%m-%d %H:%M')} | {log.source} | {log.status} | {log.records_fetched} fetched | {log.duration_ms}ms")
+        st.text(
+            f"{status_icon} {log.created_at.strftime('%Y-%m-%d %H:%M')} | {log.source} | {log.status} | {log.records_fetched} fetched | {log.duration_ms}ms"
+        )

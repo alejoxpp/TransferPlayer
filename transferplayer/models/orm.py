@@ -1,4 +1,5 @@
 """SQLAlchemy 2.0 ORM models."""
+
 from datetime import datetime
 
 from sqlalchemy import (

@@ -1,20 +1,19 @@
 #!/usr/bin/env python
 """Migra datos de SQLite (transferencias.db) → PostgreSQL (Neon)."""
+
 import asyncio
 import sqlite3
 import sys
 from decimal import Decimal
-from datetime import datetime
 from pathlib import Path
 
 # Añadir path del proyecto
 sys.path.append(str(Path(__file__).parent.parent))
 
-from transferplayer.db.session import init_db, close_db
-from transferplayer.db.repository import get_transfer_repo
-from transferplayer.models.domain import TransferCreate
 from transferplayer.config import settings
-
+from transferplayer.db.repository import get_transfer_repo
+from transferplayer.db.session import close_db, init_db
+from transferplayer.models.domain import TransferCreate
 
 SQLITE_DB = Path(__file__).parent.parent / "transferencias.db"
 
@@ -36,9 +35,8 @@ def read_sqlite() -> list[dict]:
     rows = cursor.fetchall()
     conn.close()
 
-    transfers = []
-    for row in rows:
-        transfers.append({
+    transfers = [
+        {
             "jugador": row["jugador"],
             "edad": row["edad"],
             "posicion": row["posicion"],
@@ -47,7 +45,9 @@ def read_sqlite() -> list[dict]:
             "club_destino": row["club_destino"],
             "valor": Decimal(str(row["valor"])),
             "tipo": row["tipo"],
-        })
+        }
+        for row in rows
+    ]
 
     print(f"📥 Leídos {len(transfers)} traspasos de SQLite")
     return transfers
@@ -79,7 +79,7 @@ async def migrate_to_postgres(transfers: list[dict]) -> tuple[int, int]:
 async def main():
     print("🔄 Iniciando migración SQLite → PostgreSQL")
     print(f"   SQLite: {SQLITE_DB}")
-    print(f"   PostgreSQL: {settings.neon_database_url.host}/{settings.db_name}")
+    print(f"   PostgreSQL: {settings.db_host}/{settings.db_name}")
 
     # 1. Leer SQLite
     transfers = read_sqlite()

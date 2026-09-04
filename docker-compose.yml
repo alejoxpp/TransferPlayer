@@ -36,7 +36,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: builder
+      target: runtime
     container_name: transferplayer-app
     command: >
       sh -c "alembic upgrade head && python -m transferplayer.db.init_db && streamlit run transferplayer/ui/main.py --server.port=8501 --server.address=0.0.0.0"

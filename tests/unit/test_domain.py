@@ -1,4 +1,6 @@
 """Tests unitarios para domain models."""
+
+from datetime import datetime
 from decimal import Decimal
 
 import pytest
@@ -58,37 +60,66 @@ class TestTransferCreate:
     def test_invalid_posicion(self):
         with pytest.raises(ValidationError):
             TransferCreate(
-                jugador="Test", edad=25, posicion="InvalidPos", liga="Premier League",
-                club_origen="A", club_destino="B", valor=Decimal("10"), tipo="Traspaso Definitivo"
+                jugador="Test",
+                edad=25,
+                posicion="InvalidPos",
+                liga="Premier League",
+                club_origen="A",
+                club_destino="B",
+                valor=Decimal("10"),
+                tipo="Traspaso Definitivo",
             )
 
     def test_invalid_liga(self):
         with pytest.raises(ValidationError):
             TransferCreate(
-                jugador="Test", edad=25, posicion="Delantero", liga="Invalid Liga",
-                club_origen="A", club_destino="B", valor=Decimal("10"), tipo="Traspaso Definitivo"
+                jugador="Test",
+                edad=25,
+                posicion="Delantero",
+                liga="Invalid Liga",
+                club_origen="A",
+                club_destino="B",
+                valor=Decimal("10"),
+                tipo="Traspaso Definitivo",
             )
 
     def test_same_club_origen_destino(self):
         with pytest.raises(ValidationError):
             TransferCreate(
-                jugador="Test", edad=25, posicion="Delantero", liga="Premier League",
-                club_origen="Same Club", club_destino="Same Club",
-                valor=Decimal("10"), tipo="Traspaso Definitivo"
+                jugador="Test",
+                edad=25,
+                posicion="Delantero",
+                liga="Premier League",
+                club_origen="Same Club",
+                club_destino="Same Club",
+                valor=Decimal("10"),
+                tipo="Traspaso Definitivo",
             )
 
     def test_valor_negative(self):
         with pytest.raises(ValidationError):
             TransferCreate(
-                jugador="Test", edad=25, posicion="Delantero", liga="Premier League",
-                club_origen="A", club_destino="B", valor=Decimal("-1"), tipo="Traspaso Definitivo"
+                jugador="Test",
+                edad=25,
+                posicion="Delantero",
+                liga="Premier League",
+                club_origen="A",
+                club_destino="B",
+                valor=Decimal("-1"),
+                tipo="Traspaso Definitivo",
             )
 
     def test_tipo_invalid(self):
         with pytest.raises(ValidationError):
             TransferCreate(
-                jugador="Test", edad=25, posicion="Delantero", liga="Premier League",
-                club_origen="A", club_destino="B", valor=Decimal("10"), tipo="Invalid Tipo"
+                jugador="Test",
+                edad=25,
+                posicion="Delantero",
+                liga="Premier League",
+                club_origen="A",
+                club_destino="B",
+                valor=Decimal("10"),
+                tipo="Invalid Tipo",
             )
 
     def test_whitespace_stripped(self):
@@ -142,7 +173,6 @@ class TestTransferRead:
     """Tests para TransferRead."""
 
     def test_valor_eur_property(self):
-        from datetime import datetime
         transfer = TransferRead(
             id=1,
             jugador="Test",

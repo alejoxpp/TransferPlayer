@@ -1,9 +1,11 @@
 """Página: Explorador de Traspasos."""
+
 import asyncio
+from decimal import Decimal
 
 import streamlit as st
 
-from transferplayer.models.domain import TransferRead
+from transferplayer.models.domain import TransferFilter, TransferRead
 from transferplayer.services.transfer_service import transfer_service
 from transferplayer.ui.components import (
     render_cards_grid,
@@ -21,11 +23,10 @@ st.markdown("---")
 @st.cache_data(ttl=300, show_spinner="Cargando traspasos...")
 def load_transfers_cached(filters_dict: dict) -> tuple[list[TransferRead], int]:
     """Carga traspasos con cache (convertimos filtros a dict para cache)."""
-    from transferplayer.models.domain import TransferFilter
     filters = TransferFilter(**filters_dict)
     transfers = asyncio.run(transfer_service.list_transfers(filters))
     total = asyncio.run(transfer_service.count_transfers(filters))
-    return transfers, total
+    return list(transfers), total
 
 
 # Obtener valores únicos para filtros (sin cache para que se actualicen)
@@ -42,13 +43,13 @@ with st.sidebar:
     st.markdown("---")
     st.subheader("🔍 Filtros Avanzados")
 
-    ligas = ["Todas"] + unique_vals.get("ligas", [])
+    ligas = ["Todas", *unique_vals.get("ligas", [])]
     liga_sel = st.selectbox("Liga", ligas, key="explorer_liga")
 
-    posiciones = ["Todas"] + unique_vals.get("posiciones", [])
+    posiciones = ["Todas", *unique_vals.get("posiciones", [])]
     pos_sel = st.selectbox("Posición", posiciones, key="explorer_pos")
 
-    tipos = ["Todos"] + unique_vals.get("tipos", [])
+    tipos = ["Todos", *unique_vals.get("tipos", [])]
     tipo_sel = st.selectbox("Tipo", tipos, key="explorer_tipo")
 
     # Para clubs necesitamos query aparte o usar transfer_service
@@ -61,23 +62,34 @@ with st.sidebar:
     from transferplayer.models.orm import Transfer
 
     @st.cache_data(ttl=600)
-    def get_ranges():
-        async def _get():
+    def get_ranges() -> tuple[float, float, int, int] | None:
+        async def _get() -> tuple[float, float, int, int] | None:
             async with get_session() as session:
                 result = await session.execute(
                     select(
-                        func.min(Transfer.valor), func.max(Transfer.valor),
-                        func.min(Transfer.edad), func.max(Transfer.edad)
+                        func.min(Transfer.valor),
+                        func.max(Transfer.valor),
+                        func.min(Transfer.edad),
+                        func.max(Transfer.edad),
                     )
                 )
-                return result.first()
+                row = result.first()
+                if row is None:
+                    return None
+                min_v, max_v, min_e, max_e = row
+                return float(min_v), float(max_v), int(min_e), int(max_e)
+
         return asyncio.run(_get())
 
     min_v, max_v, min_e, max_e = get_ranges() or (0, 200, 15, 45)
-    if min_v == max_v: max_v = min_v + 1
-    if min_e == max_e: max_e = min_e + 1
+    if min_v == max_v:
+        max_v = min_v + 1
+    if min_e == max_e:
+        max_e = min_e + 1
 
-    rango_valor = st.slider("Valor (€M)", float(min_v), float(max_v), (float(min_v), float(max_v)), step=0.5)
+    rango_valor = st.slider(
+        "Valor (€M)", float(min_v), float(max_v), (float(min_v), float(max_v)), step=0.5
+    )
     rango_edad = st.slider("Edad", min_e, max_e, (min_e, max_e))
 
     # Clubes (query aparte para no cargar todo)
@@ -85,10 +97,6 @@ with st.sidebar:
     club_destino_sel = "Todos"
 
 # Construir filtros
-from decimal import Decimal
-
-from transferplayer.models.domain import TransferFilter
-
 filters = TransferFilter(
     liga=None if liga_sel == "Todas" else liga_sel,
     posicion=None if pos_sel == "Todas" else pos_sel,

@@ -1,4 +1,5 @@
 """Entry point principal para Streamlit."""
+
 import streamlit as st
 
 # Configuración de página global
@@ -10,7 +11,8 @@ st.set_page_config(
 )
 
 # CSS global
-st.markdown("""
+st.markdown(
+    """
 <style>
     .main { background-color: #f8f9fa; }
     .kpi-card {
@@ -30,11 +32,16 @@ st.markdown("""
     section[data-testid="stSidebar"] { background-color: #ffffff; border-right: 1px solid #e2e8f0; }
     .stMetric { background: white; padding: 16px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 # Sidebar global
 with st.sidebar:
-    st.image("https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=600&q=80", use_container_width=True)
+    st.image(
+        "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=600&q=80",
+        width="stretch",
+    )
     st.markdown("## ⚽ TransferPlayer")
     st.caption("Prototipo profesional - 5 Grandes Ligas")
     st.markdown("---")
@@ -50,7 +57,13 @@ with st.sidebar:
     """)
 
     st.markdown("---")
-    st.caption(f"v0.1.0 | {st.secrets.get('APP_ENV', 'dev')}")
+    # st.secrets lanza StreamlitSecretNotFoundError si no existe secrets.toml,
+    # incluso usando .get(); accedemos de forma defensiva.
+    try:
+        app_env = st.secrets.get("APP_ENV", "dev")
+    except Exception:  # sin secrets.toml configurado
+        app_env = "dev"
+    st.caption(f"v0.1.0 | {app_env}")
 
 # El contenido real se renderiza en cada page (Streamlit multipage)
 st.markdown("# ⚽ TransferPlayer")

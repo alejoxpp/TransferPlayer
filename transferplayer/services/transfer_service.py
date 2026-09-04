@@ -1,15 +1,21 @@
 """Servicio de lógica de negocio para traspasos."""
+
 from collections.abc import Sequence
 
 from transferplayer.db.repository import TransferRepository, get_transfer_repo
-from transferplayer.models.domain import TransferCreate, TransferFilter, TransferUpdate
+from transferplayer.models.domain import (
+    TransferCreate,
+    TransferFilter,
+    TransferRead,
+    TransferUpdate,
+)
 from transferplayer.models.orm import Transfer
 
 
 class TransferService:
     """Capa de servicio para operaciones de traspasos."""
 
-    def __init__(self, repo: TransferRepository | None = None):
+    def __init__(self, repo: TransferRepository | None = None) -> None:
         self._repo = repo
 
     async def _get_repo(self) -> TransferRepository:
@@ -19,26 +25,29 @@ class TransferService:
         # Nota: en uso real, inyectar repo via context manager
         raise RuntimeError("Usar TransferService dentro de async with get_transfer_repo()")
 
-    async def list_transfers(self, filters: TransferFilter) -> Sequence[Transfer]:
+    async def list_transfers(self, filters: TransferFilter) -> Sequence[TransferRead]:
         async with get_transfer_repo() as repo:
-            return await repo.list_filtered(filters)
+            transfers = await repo.list_filtered(filters)
+            return [TransferRead.model_validate(t) for t in transfers]
 
     async def count_transfers(self, filters: TransferFilter) -> int:
         async with get_transfer_repo() as repo:
             return await repo.count_filtered(filters)
 
-    async def get_transfer(self, transfer_id: int) -> Transfer | None:
+    async def get_transfer(self, transfer_id: int) -> TransferRead | None:
         async with get_transfer_repo() as repo:
-            return await repo.get_by_id(transfer_id)
+            transfer = await repo.get_by_id(transfer_id)
+            return TransferRead.model_validate(transfer) if transfer else None
 
-    async def create_transfer(self, data: TransferCreate) -> Transfer:
+    async def create_transfer(self, data: TransferCreate) -> TransferRead:
         async with get_transfer_repo() as repo:
             transfer, _ = await repo.upsert_from_api(data)
-            return transfer
+            return TransferRead.model_validate(transfer)
 
-    async def update_transfer(self, transfer_id: int, data: TransferUpdate) -> Transfer | None:
+    async def update_transfer(self, transfer_id: int, data: TransferUpdate) -> TransferRead | None:
         async with get_transfer_repo() as repo:
-            return await repo.update(transfer_id, **data.model_dump(exclude_unset=True))
+            transfer = await repo.update(transfer_id, **data.model_dump(exclude_unset=True))
+            return TransferRead.model_validate(transfer) if transfer else None
 
     async def delete_transfer(self, transfer_id: int) -> bool:
         async with get_transfer_repo() as repo:
@@ -53,11 +62,12 @@ class TransferService:
         from sqlalchemy import distinct, select
 
         from transferplayer.db.session import get_session
-        from transferplayer.models.orm import Transfer
 
         async with get_session() as session:
             ligas = await session.execute(select(distinct(Transfer.liga)).order_by(Transfer.liga))
-            posiciones = await session.execute(select(distinct(Transfer.posicion)).order_by(Transfer.posicion))
+            posiciones = await session.execute(
+                select(distinct(Transfer.posicion)).order_by(Transfer.posicion)
+            )
             tipos = await session.execute(select(distinct(Transfer.tipo)).order_by(Transfer.tipo))
 
             return {

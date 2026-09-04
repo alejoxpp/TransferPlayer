@@ -1,5 +1,7 @@
 """Componentes UI reutilizables para Streamlit."""
+
 from decimal import Decimal
+from typing import Literal
 
 import pandas as pd
 import streamlit as st
@@ -7,14 +9,20 @@ import streamlit as st
 from transferplayer.models.domain import TransferFilter, TransferRead
 
 
-def render_kpi_card(label: str, value: str, delta: str | None = None, delta_color: str = "normal") -> None:
+def render_kpi_card(
+    label: str,
+    value: str,
+    delta: str | None = None,
+    delta_color: Literal["normal", "inverse", "off"] = "normal",
+) -> None:
     """Renderiza una tarjeta KPI."""
     st.metric(label, value, delta=delta, delta_color=delta_color)
 
 
 def render_transfer_card(transfer: TransferRead) -> None:
     """Renderiza una tarjeta de traspaso individual."""
-    st.markdown(f"""
+    st.markdown(
+        f"""
     <div style="
         background: white;
         padding: 18px;
@@ -31,7 +39,9 @@ def render_transfer_card(transfer: TransferRead) -> None:
             &nbsp; <b style="color:#1f77b4;">{transfer.valor_eur}</b> ({transfer.tipo})
         </p>
     </div>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
 
 def render_filter_sidebar(df: pd.DataFrame) -> TransferFilter:
@@ -40,19 +50,25 @@ def render_filter_sidebar(df: pd.DataFrame) -> TransferFilter:
         st.markdown("---")
         st.subheader("🔍 Filtros")
 
-        ligas = ["Todas"] + sorted(df["liga"].unique().tolist()) if not df.empty else ["Todas"]
+        ligas = ["Todas", *sorted(df["liga"].unique().tolist())] if not df.empty else ["Todas"]
         liga_sel = st.selectbox("Liga", ligas)
 
-        posiciones = ["Todas"] + sorted(df["posicion"].unique().tolist()) if not df.empty else ["Todas"]
+        posiciones = (
+            ["Todas", *sorted(df["posicion"].unique().tolist())] if not df.empty else ["Todas"]
+        )
         pos_sel = st.selectbox("Posición", posiciones)
 
-        tipos = ["Todos"] + sorted(df["tipo"].unique().tolist()) if not df.empty else ["Todos"]
+        tipos = ["Todos", *sorted(df["tipo"].unique().tolist())] if not df.empty else ["Todos"]
         tipo_sel = st.selectbox("Tipo", tipos)
 
-        clubes_origen = ["Todos"] + sorted(df["club_origen"].unique().tolist()) if not df.empty else ["Todos"]
+        clubes_origen = (
+            ["Todos", *sorted(df["club_origen"].unique().tolist())] if not df.empty else ["Todos"]
+        )
         club_origen_sel = st.selectbox("Club Origen", clubes_origen)
 
-        clubes_destino = ["Todos"] + sorted(df["club_destino"].unique().tolist()) if not df.empty else ["Todos"]
+        clubes_destino = (
+            ["Todos", *sorted(df["club_destino"].unique().tolist())] if not df.empty else ["Todos"]
+        )
         club_destino_sel = st.selectbox("Club Destino", clubes_destino)
 
         min_v = float(df["valor"].min()) if not df.empty else 0.0
@@ -93,7 +109,17 @@ def render_dataframe(transfers: list[TransferRead]) -> None:
 
     df = pd.DataFrame([t.model_dump() for t in transfers])
     # Reordenar y renombrar columnas
-    cols_order = ["jugador", "edad", "posicion", "liga", "club_origen", "club_destino", "valor", "tipo", "fecha"]
+    cols_order = [
+        "jugador",
+        "edad",
+        "posicion",
+        "liga",
+        "club_origen",
+        "club_destino",
+        "valor",
+        "tipo",
+        "fecha",
+    ]
     col_names = {
         "jugador": "Jugador",
         "edad": "Edad",
@@ -121,7 +147,9 @@ def render_cards_grid(transfers: list[TransferRead], cols: int = 3) -> None:
             render_transfer_card(transfer)
 
 
-def render_download_button(transfers: list[TransferRead], filename: str = "transferencias.csv") -> None:
+def render_download_button(
+    transfers: list[TransferRead], filename: str = "transferencias.csv"
+) -> None:
     """Botón de descarga CSV."""
     if not transfers:
         return
@@ -132,7 +160,7 @@ def render_download_button(transfers: list[TransferRead], filename: str = "trans
         data=csv,
         file_name=filename,
         mime="text/csv",
-        use_container_width=True,
+        width="stretch",
     )
 
 
@@ -144,9 +172,13 @@ def render_sync_logs(logs: list) -> None:
 
     for log in logs:
         status_icon = {"success": "✅", "error": "❌", "partial": "⚠️"}.get(log.status, "ℹ️")
-        with st.expander(f"{status_icon} {log.source} - {log.endpoint} - {log.created_at.strftime('%Y-%m-%d %H:%M')}"):
+        with st.expander(
+            f"{status_icon} {log.source} - {log.endpoint} - {log.created_at.strftime('%Y-%m-%d %H:%M')}"
+        ):
             st.write(f"**Estado:** {log.status}")
-            st.write(f"**Registros:** {log.records_fetched} obtenidos, {log.records_inserted} insertados, {log.records_updated} actualizados")
+            st.write(
+                f"**Registros:** {log.records_fetched} obtenidos, {log.records_inserted} insertados, {log.records_updated} actualizados"
+            )
             st.write(f"**Duración:** {log.duration_ms}ms")
             if log.error_message:
                 st.error(log.error_message)

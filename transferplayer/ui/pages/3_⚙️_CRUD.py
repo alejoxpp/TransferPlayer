@@ -1,10 +1,16 @@
 """Página: Gestión CRUD de Traspasos."""
+
 import asyncio
 from decimal import Decimal
 
 import streamlit as st
 
-from transferplayer.models.domain import TransferCreate, TransferRead, TransferUpdate
+from transferplayer.models.domain import (
+    TransferCreate,
+    TransferFilter,
+    TransferRead,
+    TransferUpdate,
+)
 from transferplayer.services.transfer_service import transfer_service
 from transferplayer.ui.components import render_transfer_card
 
@@ -14,9 +20,9 @@ st.markdown("# ⚙️ Panel de Gestión (CRUD)")
 st.markdown("### Crear, leer, actualizar y eliminar traspasos en PostgreSQL")
 st.markdown("---")
 
-tab_add, tab_edit, tab_delete, tab_view = st.tabs([
-    "➕ Crear", "✏️ Editar", "🗑️ Eliminar", "👁️ Ver Detalle"
-])
+tab_add, tab_edit, tab_delete, tab_view = st.tabs(
+    ["➕ Crear", "✏️ Editar", "🗑️ Eliminar", "👁️ Ver Detalle"]
+)
 
 # --- CREAR ---
 with tab_add:
@@ -27,15 +33,23 @@ with tab_add:
         with c1:
             jugador = st.text_input("Jugador *", placeholder="Ej: Kylian Mbappé")
             edad = st.number_input("Edad *", min_value=15, max_value=45, value=22)
-            posicion = st.selectbox("Posición *", ["Delantero", "Centrocampista", "Defensa", "Portero"])
-            liga = st.selectbox("Liga Destino *", ["Premier League", "La Liga", "Serie A", "Bundesliga", "Ligue 1"])
+            posicion = st.selectbox(
+                "Posición *", ["Delantero", "Centrocampista", "Defensa", "Portero"]
+            )
+            liga = st.selectbox(
+                "Liga Destino *", ["Premier League", "La Liga", "Serie A", "Bundesliga", "Ligue 1"]
+            )
         with c2:
             club_origen = st.text_input("Club Origen *", placeholder="Ej: Paris SG")
             club_destino = st.text_input("Club Destino *", placeholder="Ej: Real Madrid")
-            valor = st.number_input("Valor (€M) *", min_value=0.0, max_value=500.0, value=30.0, step=0.5)
+            valor = st.number_input(
+                "Valor (€M) *", min_value=0.0, max_value=500.0, value=30.0, step=0.5
+            )
             tipo = st.selectbox("Tipo *", ["Traspaso Definitivo", "Cesión", "Traspaso Libre"])
 
-        submitted = st.form_submit_button("💾 Guardar en PostgreSQL", type="primary", use_container_width=True)
+        submitted = st.form_submit_button(
+            "💾 Guardar en PostgreSQL", type="primary", width="stretch"
+        )
 
         if submitted:
             if not all([jugador.strip(), club_origen.strip(), club_destino.strip()]):
@@ -66,9 +80,8 @@ with tab_edit:
     st.subheader("Modificar traspaso existente")
 
     @st.cache_data(ttl=60, show_spinner="Cargando lista...")
-    def load_all_for_edit():
-        from transferplayer.models.domain import TransferFilter
-        return asyncio.run(transfer_service.list_transfers(TransferFilter(limit=500)))
+    def load_all_for_edit() -> list[TransferRead]:
+        return list(asyncio.run(transfer_service.list_transfers(TransferFilter(limit=500))))
 
     all_transfers = load_all_for_edit()
 
@@ -84,18 +97,39 @@ with tab_edit:
             c1, c2 = st.columns(2)
             with c1:
                 edit_edad = st.number_input("Edad", min_value=15, max_value=45, value=selected.edad)
-                edit_pos = st.selectbox("Posición", ["Delantero", "Centrocampista", "Defensa", "Portero"],
-                                        index=["Delantero", "Centrocampista", "Defensa", "Portero"].index(selected.posicion))
-                edit_liga = st.selectbox("Liga", ["Premier League", "La Liga", "Serie A", "Bundesliga", "Ligue 1"],
-                                         index=["Premier League", "La Liga", "Serie A", "Bundesliga", "Ligue 1"].index(selected.liga))
+                edit_pos = st.selectbox(
+                    "Posición",
+                    ["Delantero", "Centrocampista", "Defensa", "Portero"],
+                    index=["Delantero", "Centrocampista", "Defensa", "Portero"].index(
+                        selected.posicion
+                    ),
+                )
+                edit_liga = st.selectbox(
+                    "Liga",
+                    ["Premier League", "La Liga", "Serie A", "Bundesliga", "Ligue 1"],
+                    index=["Premier League", "La Liga", "Serie A", "Bundesliga", "Ligue 1"].index(
+                        selected.liga
+                    ),
+                )
             with c2:
                 edit_origen = st.text_input("Club Origen", value=selected.club_origen)
                 edit_destino = st.text_input("Club Destino", value=selected.club_destino)
-                edit_valor = st.number_input("Valor (€M)", min_value=0.0, max_value=500.0, value=float(selected.valor), step=0.5)
-                edit_tipo = st.selectbox("Tipo", ["Traspaso Definitivo", "Cesión", "Traspaso Libre"],
-                                         index=["Traspaso Definitivo", "Cesión", "Traspaso Libre"].index(selected.tipo))
+                edit_valor = st.number_input(
+                    "Valor (€M)",
+                    min_value=0.0,
+                    max_value=500.0,
+                    value=float(selected.valor),
+                    step=0.5,
+                )
+                edit_tipo = st.selectbox(
+                    "Tipo",
+                    ["Traspaso Definitivo", "Cesión", "Traspaso Libre"],
+                    index=["Traspaso Definitivo", "Cesión", "Traspaso Libre"].index(selected.tipo),
+                )
 
-            update_submitted = st.form_submit_button("🔄 Actualizar", type="primary", use_container_width=True)
+            update_submitted = st.form_submit_button(
+                "🔄 Actualizar", type="primary", width="stretch"
+            )
 
             if update_submitted:
                 if not all([edit_origen.strip(), edit_destino.strip()]):
@@ -113,9 +147,11 @@ with tab_edit:
                             valor=Decimal(str(edit_valor)),
                             tipo=edit_tipo,
                         )
-                        result = asyncio.run(transfer_service.update_transfer(selected.id, update_data))
-                        if result:
-                            st.success(f"✅ **{result.jugador}** actualizado correctamente")
+                        updated = asyncio.run(
+                            transfer_service.update_transfer(selected.id, update_data)
+                        )
+                        if updated:
+                            st.success(f"✅ **{updated.jugador}** actualizado correctamente")
                             st.rerun()
                         else:
                             st.error("❌ No se encontró el registro")
@@ -131,7 +167,9 @@ with tab_delete:
         st.info("No hay traspasos para eliminar.")
     else:
         del_options = {f"{t.jugador} → {t.club_destino} (€{t.valor}M)": t for t in all_transfers}
-        del_key = st.selectbox("Selecciona para eliminar", list(del_options.keys()), key="del_select")
+        del_key = st.selectbox(
+            "Selecciona para eliminar", list(del_options.keys()), key="del_select"
+        )
         to_delete: TransferRead = del_options[del_key]
 
         st.markdown(f"""
@@ -144,7 +182,7 @@ with tab_delete:
 
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("🗑️ ELIMINAR PERMANENTEMENTE", type="primary", use_container_width=True):
+            if st.button("🗑️ ELIMINAR PERMANENTEMENTE", type="primary", width="stretch"):
                 try:
                     success = asyncio.run(transfer_service.delete_transfer(to_delete.id))
                     if success:
@@ -155,7 +193,7 @@ with tab_delete:
                 except Exception as e:
                     st.error(f"❌ Error: {e}")
         with col2:
-            if st.button("Cancelar", use_container_width=True):
+            if st.button("Cancelar", width="stretch"):
                 st.rerun()
 
 # --- VER DETALLE ---
@@ -173,9 +211,11 @@ with tab_view:
 
         st.markdown("---")
         st.markdown("**Metadatos:**")
-        st.json({
-            "id": view_transfer.id,
-            "fecha": view_transfer.fecha.isoformat(),
-            "created_at": view_transfer.created_at.isoformat(),
-            "updated_at": view_transfer.updated_at.isoformat(),
-        })
+        st.json(
+            {
+                "id": view_transfer.id,
+                "fecha": view_transfer.fecha.isoformat(),
+                "created_at": view_transfer.created_at.isoformat(),
+                "updated_at": view_transfer.updated_at.isoformat(),
+            }
+        )

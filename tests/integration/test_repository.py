@@ -1,4 +1,5 @@
 """Tests de integración para repository y services."""
+
 from decimal import Decimal
 
 import pytest
@@ -17,7 +18,10 @@ class TestTransferRepository:
     """Tests de integración para TransferRepository."""
 
     async def _create_test_data(
-        self, repo: TransferRepository, count: int = TEST_COUNT, liga: str = "La Liga",
+        self,
+        repo: TransferRepository,
+        count: int = TEST_COUNT,
+        liga: str = "La Liga",
     ) -> list:
         """Helper para crear datos de prueba."""
         created = []

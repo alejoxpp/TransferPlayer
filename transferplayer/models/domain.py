@@ -1,12 +1,14 @@
 """Pydantic domain models (validación, serialización, API)."""
+
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 
 class TransferBase(BaseModel):
     """Campos base de un traspaso."""
+
     model_config = ConfigDict(
         from_attributes=True,
         str_strip_whitespace=True,
@@ -19,12 +21,14 @@ class TransferBase(BaseModel):
     liga: str = Field(..., pattern=r"^(Premier League|La Liga|Serie A|Bundesliga|Ligue 1)$")
     club_origen: str = Field(..., min_length=1, max_length=120)
     club_destino: str = Field(..., min_length=1, max_length=120)
-    valor: Decimal = Field(..., ge=0, max_digits=10, decimal_places=2, description="Valor en millones EUR")
+    valor: Decimal = Field(
+        ..., ge=0, max_digits=10, decimal_places=2, description="Valor en millones EUR"
+    )
     tipo: str = Field(..., pattern=r"^(Traspaso Definitivo|Cesión|Traspaso Libre)$")
 
     @field_validator("club_destino")
     @classmethod
-    def club_destino_different_from_origen(cls, v: str, info) -> str:
+    def club_destino_different_from_origen(cls, v: str, info: ValidationInfo) -> str:
         if info.data.get("club_origen") and v.lower() == info.data["club_origen"].lower():
             raise ValueError("Club destino debe ser diferente al club origen")
         return v
@@ -36,6 +40,7 @@ class TransferCreate(TransferBase):
 
 class TransferUpdate(BaseModel):
     """Para actualizar traspaso (todos opcionales)."""
+
     model_config = ConfigDict(from_attributes=True, str_strip_whitespace=True)
 
     edad: int | None = Field(None, ge=15, le=45)
@@ -49,6 +54,7 @@ class TransferUpdate(BaseModel):
 
 class TransferRead(TransferBase):
     """Para lectura/serialización."""
+
     id: int
     fecha: datetime
     created_at: datetime
@@ -61,6 +67,7 @@ class TransferRead(TransferBase):
 
 class TransferFilter(BaseModel):
     """Filtros para listado/búsqueda."""
+
     liga: str | None = None
     posicion: str | None = None
     tipo: str | None = None
@@ -77,6 +84,7 @@ class TransferFilter(BaseModel):
 
 class SyncLogRead(BaseModel):
     """Log de sincronización."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: int

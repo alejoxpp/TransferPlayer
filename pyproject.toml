@@ -51,19 +51,44 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-select = ["E", "F", "I", "UP", "W", "C90", "ANN", "ARG", "B", "COM", "DTZ", "EXE", "FA", "ISC", "ICN", "LOG", "PIE", "PT", "Q", "RET", "RSE", "SIM", "TCH", "TID", "TRY", "NPY", "PERF", "PL", "RUF", "PTH", "TD", "T10", "FLY"]
-ignore = ["ANN101", "ANN102", "ANN201", "ANN202", "S101", "S103", "S106", "S301", "S307", "S603", "S607", "TRY003", "PTH118", "PTH123"]
-fixable = ["ALL"]
-unfixable = ["TCH", "ANN", "ARG", "COM", "DTZ", "ISC", "ICN", "LOG", "RET", "RSE", "SIM", "TID", "NPY", "PERF", "PL", "RUF", "PTH", "TD", "T10", "FLY"]
+
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "I", "UP", "W", "C90", "ANN", "ARG", "B", "COM", "DTZ", "EXE",
+    "FA", "ISC", "ICN", "LOG", "PIE", "PT", "Q", "RET", "RSE", "SIM", "TCH",
+    "TID", "TRY", "NPY", "PERF", "PL", "RUF", "PTH", "TD", "T10", "FLY",
+]
+ignore = [
+    "ANN201", "ANN202", "TRY003", "PTH118", "PTH123",
+    # El formato lo gestiona black; no duplicar reglas de estilo
+    "E501", "COM812",
+    # Emojis/unicode intencionales en la UI y scripts
+    "RUF001",
+    # Complejidad aceptable en un prototipo
+    "C901", "PLR0912", "PLR0913", "PLR0917",
+    # Imports diferidos por caché de Streamlit y singletons globales intencionales
+    "PLC0415", "PLW0603",
+    # Datetime naive OK para temporada/reset diario
+    "DTZ005", "DTZ011",
+    # Refactors menores sin impacto funcional
+    "RET504", "RET505", "SIM102",
+]
+fixable = ["ALL"]
+unfixable = ["TCH", "ANN", "ARG", "COM", "DTZ", "ISC", "ICN", "LOG", "RET", "RSE", "SIM", "TID", "NPY", "PERF", "PL", "RUF", "PTH", "TD", "T10", "FLY"]
+
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101", "S106", "SLF001"]
+"tests/*" = ["PLR2004"]
 
 [tool.mypy]
-python_version = "3.11"
+# 3.12 para análisis: así los stubs de numpy 2.x (sintaxis `type`) se pueden
+# parsear. El runtime objetivo sigue siendo 3.11 (black + CI lo garantiza).
+python_version = "3.12"
+plugins = ["pydantic.mypy"]
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -74,11 +99,6 @@ strict_optional = true
 ignore_missing_imports = true
 namespace_packages = true
 explicit_package_bases = true
-
-[[tool.mypy.overrides]]
-module = "numpy.*"
-ignore_missing_imports = true
-ignore_errors = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

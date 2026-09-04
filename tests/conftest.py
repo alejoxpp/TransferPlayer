@@ -1,4 +1,5 @@
 """Configuración global de pytest."""
+
 import asyncio
 import contextlib
 import tempfile

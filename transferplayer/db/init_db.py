@@ -1,10 +1,12 @@
 """Inicialización de BD y seed data."""
+
 import asyncio
 from decimal import Decimal
 
 from transferplayer.db.repository import get_transfer_repo
-from transferplayer.db.session import close_db, init_db
+from transferplayer.db.session import close_db, get_engine, init_db
 from transferplayer.models.domain import TransferCreate
+from transferplayer.models.orm import Base
 
 INITIAL_TRANSFERS = [
     TransferCreate(
@@ -179,9 +181,6 @@ async def seed_database() -> None:
 
 async def reset_database() -> None:
     """Elimina y recrea todas las tablas (solo desarrollo)."""
-    from transferplayer.db.session import get_engine
-    from transferplayer.models.orm import Base
-
     engine = get_engine()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
